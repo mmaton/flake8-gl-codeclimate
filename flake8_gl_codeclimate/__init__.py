@@ -1,4 +1,5 @@
 import hashlib
+import random
 import json
 
 from flake8.formatting.base import BaseFormatter
@@ -16,8 +17,7 @@ class GitlabCodeClimateFormatter(BaseFormatter):
     """
     @classmethod
     def _make_fingerprint(cls, v):
-        b = bytes(" ".join([str(getattr(v, f)) for f in v._fields]), "utf-8")
-        return hashlib.sha1(b).hexdigest()
+        return str(random.getrandbits(128))
 
     @classmethod
     def _guess_check_name(cls, v):
@@ -80,27 +80,25 @@ class GitlabCodeClimateFormatter(BaseFormatter):
         https://docs.gitlab.com/ee/user/project/merge_requests/code_quality.html#how-it-works  # noqa
         """
         return {
+            "engine_name": "flake8",
             "type": "issue",
-            "check_name": cls._guess_check_name(v),
+            "check_name": "[{}]".format(v.code),
             "description": "{} [{}]".format(v.text, v.code),
-            # "content": content -- Optional. A markdown snippet describing the
-            # issue, including deeper explanations and links to other resources.
             "categories": cls._guess_categories(v),
             "location": {
                 "path": v.filename,
-                "lines": {
-                    "begin": v.line_number,
-                    "end": v.line_number,
+                "positions": {
+                    "begin": {
+                        "line": v.line_number,
+                        "column": v.column_number
+                    },
+                    "end": {
+                        "line": v.line_number,
+                        "column": v.column_number
+                    }
                 },
             },
-            # trace -- Optional. A Trace object representing other interesting
-            #          source code locations related to this issue.
-            # remediation_points -- Optional. An integer indicating a rough
-            #                       estimate of how long it would take to resolve
-            #                       the reported issue.
-            # severity -- Optional. A Severity string (info, minor, major,
-            #             critical, or blocker) describing the potential impact
-            #             of the issue found.
+            "severity": "major" if v.code.startswith("E") else "minor",
             "fingerprint": cls._make_fingerprint(v),
         }
 
